@@ -1,5 +1,8 @@
 from tkinter import *
 
+from tweepy.streaming import StreamListener
+from tweepy import OAuthHandler
+from tweepy import Stream
 from PIL import Image, ImageTk
 import requests
 import json
@@ -9,21 +12,16 @@ import tkinter.ttk as ttk
 import tweepy
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt1
+import matplotlib.pyplot as plt2
 from textblob import TextBlob
 from wordcloud import WordCloud
 from langdetect import detect
-
 from tkcalendar import  *
 import datetime
-global x
-
+import dateutil.parser
 import numpy as np
-import pandas as pd
-# from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
 import seaborn as sns
 import re
-
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
@@ -40,20 +38,83 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, roc_auc_score, recall_score, precision_score
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import learning_curve
-
-
-
 from sklearn.base import BaseEstimator, TransformerMixin
 from tkinter import messagebox
 
-from googletrans import Translator
-translator = Translator()
+import tkinter as tk
+from tkinter.filedialog import askopenfilename
+import pycountry
 
 consumer_key = "fk8byb9V8aKdRHepMnulf6tI7";
 consumer_secret = "ChQ1rHJb0DDmUfiEL0Rk1rjQsllBtLLLAbO3I9aEbS4vG2pN9z";
 access_token = "918125352546738176-q1aVXcesbeHecmZcZryDZJGniHis4a1";
 access_token_secret = "sXJmY61vVlzRY6D8z9D1MwkqUVmrEU8NBbQ9oDwByu4E7";
 
+
+
+
+
+class Fetch():
+    def __init__(self):
+        self.fetch=Tk()
+        self.fetch.geometry("1020x680+160+10")
+        self.fetch.title("Opinion Mining System")
+        self.fetch.resizable(0, 0)
+        self.fetchform()
+        self.fetch.mainloop()
+    def fetchform(self):
+        Label(self.fetch, text="Fetch the Tweets", font=("w 30 bold")).place(x=350, y=15)
+        entry1 = Entry(self.fetch)
+        entry1.place(x=100, y=70, height=50, width=800)
+
+        def exit():
+            process.kill()
+
+
+        def printing():
+
+
+
+            # hash_tag_list = ["corona virus", "covid19", "covid-19", "coronapandemic", "coronavirus"]
+            class TwitterStreamer():
+                def __init__(self):
+                    pass
+
+                def stream_tweets(self, fetched_tweets_filename, hash_tag_list):
+                    listener = StdOutListener(fetched_tweets_filename)
+                    auth = OAuthHandler(consumer_key, consumer_secret)
+                    auth.set_access_token(access_token, access_token_secret)
+                    stream = Stream(auth, listener)
+                    stream.filter(track=hash_tag_list)
+
+            class StdOutListener(StreamListener):
+                def __init__(self, fetched_tweets_filename):  # constructor
+                    self.fetched_tweets_filename = fetched_tweets_filename
+
+                def on_data(self, data):
+                    try:
+                        with open(self.fetched_tweets_filename, 'a') as tf:
+                            tf.write(data)
+                            print(data)
+
+                        return True
+                    except BaseException as e:
+                        print("Error on_data %s" % str(e))
+                    return True
+
+                def on_error(self, status):
+                    print(status)
+
+            hash_tag_list = entry1.get()
+            fetched_tweets_filename = "streamTweets.json"
+            twitter_streamer = TwitterStreamer()
+            twitter_streamer.stream_tweets(fetched_tweets_filename, hash_tag_list)
+            Label(self.fetch, text="Fetch the Tweets", font=("w 30 bold")).place(x=350, y=500)
+
+        Button(self.fetch, text="Start Fetching", command=printing).\
+            place(x=300, y=150, height=50,width=100)
+        Button(self.fetch, text="Stop Fetching", command=exit). \
+            place(x=600, y=150, height=50, width=100)
 
 
 
@@ -65,7 +126,7 @@ class FirstPage():
         self.root.resizable(0, 0)
         frame1 = Frame(self.root, height=680, width=510, bg="grey")
         frame1.pack(side=LEFT, fill=BOTH)
-        bg_img = PhotoImage(file="phs.png")
+        bg_img = PhotoImage(file="assets/phs.png")
         bg_label = Label(frame1, image=bg_img)
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         self.homePage()
@@ -89,7 +150,7 @@ class FirstPage():
 
         frame4=Frame(self.root,)
         frame4.place(x=580, y=250)
-        load = Image.open("graph.jpg")
+        load = Image.open("assets/graph.jpg")
         render = ImageTk.PhotoImage(load)
         img = Label(frame4, image=render)
         img.image = render
@@ -103,7 +164,6 @@ class FirstPage():
 
         btn2 = Button(frame3, text="Get Corona Data", command=CoronaData, padx=40, pady=10)
         btn2.pack(side=LEFT, anchor=S, padx=40, pady=20)
-
 
 class CoronaData():
     def __init__(self):
@@ -196,7 +256,6 @@ class CoronaData():
         for s in data:
             i = i + 1;
             tree.insert("", i, text=i, values=(s['country'], s['cases'],s['todayCases'],s['deaths'],s['todayDeaths'],s['recovered'],s['active'],s['critical']))
-
 
 class FetchTweets():
 
@@ -298,40 +357,53 @@ class FetchTweets():
 
             # Creating the API object while passing in auth information
             api = tweepy.API(authenticate, wait_on_rate_limit=True, wait_on_rate_limit_notify=False)
+            print(api)
 
             # Create a dataframe with a column called Tweets
             df = pd.DataFrame([tweet.text for tweet in
                                tweepy.Cursor(api.search, q=query, lang="en",
-                                           since=d1, until=d2  ).items(number)], columns=['Tweets'])
-            df["Created_At"] = [tweet.created_at for tweet in
+                                           since=d1, until=d2  ).items(number)], columns=['text'])
+            df["created_at"] = [tweet.created_at for tweet in
                                 tweepy.Cursor(api.search, q=query,lang="en",
                                               since=d1, until=d2 ).items(number)]
-            df["Locations"] = [tweet.user.location for tweet in
+            df["Location"] = [tweet.user.location for tweet in
                                tweepy.Cursor(api.search, q=query,lang="en",
                                              since=d1, until=d2  ).items(number)]
             df.to_csv(r'new_data.csv', index=True)
             print(df)
-            SentimentAnalysis()
+            SentimentAnalysisFetch()
 
         def clear_all_fields():
             keywordEntry.delete(0, END)
             numberEntry.delete(0, END)
             startEntry.delete(0, END)
             endEntry.delete(0, END)
+
+        def import_csv_data():
+            global v
+            global csv_file_path
+            csv_file_path = askopenfilename()
+            print(csv_file_path)
+            SentimentAnalysisCSV()
+            # v.set(csv_file_path)
+            # df = pd.read_csv(csv_file_path)
+
         btn1=Button(formFrame, text="Fetch Tweets", font=" m 20", command=fetchData,fg="green",pady=10, padx=10,relief=RAISED,
                     background="orange"
                     )
-        btn1.place(x=60, y=400)
+        btn1.place(x=20, y=400)
         btn2 = Button(formFrame, text=" Clear All", font=" m 20", command=clear_all_fields, fg="red", pady=10, padx=10,
                       )
-        btn2.place(x=300, y=400)
+        btn2.place(x=230, y=400)
 
-        btn2 = Button(formFrame, text="Quit", font=" m 20",command=FirstPage, fg="red", pady=10, padx=10,
+        btn2 = Button(formFrame, text="Quit", font=" m 20",command=FirstPage, fg="red", pady=10, padx=30,
                       )
-        btn2.place(x=530, y=400)
+        btn2.place(x=380, y=400)
 
-
-class SentimentAnalysis():
+        btn3 = Button(formFrame, text="Open CSV", font=" m 20", command=import_csv_data, fg="red", pady=10, padx=10,
+                      )
+        btn3.place(x=530, y=400)
+class SentimentAnalysisFetch():
     def __init__(self):
         self.root3 = Tk()
         self.root3.geometry("1020x680+160+10")
@@ -347,26 +419,28 @@ class SentimentAnalysis():
         # number of columns
         tree["columns"] = ("1", "2", "3")
         tree.column("#0", width=50, stretch=YES)
-        tree.column("1", width=150, stretch=YES)
-        tree.column("2", width=700, stretch=YES)
-        tree.column("3", width=150, stretch=YES)
+        tree.column("1", width=200, stretch=YES)
+        tree.column("2", width=800, stretch=YES)
+        # tree.column("3", width=150, stretch=YES)
 
         # heading of the table
         tree.heading("#0", text="S.N.", )
         tree.heading("1", text="Created At")
         tree.heading("2", text="Tweets", )
-        tree.heading("3", text="Location", )
+        # tree.heading("3", text="Location", )
 
         tree.place(x=0, y=50, width=1020,height=500)
         i=0
+
+
         with open('new_data.csv') as f:
             reader = csv.DictReader(f, delimiter=',')
             for row in reader:
                 i=i+1
-                tweets = row['Tweets']
-                created_at=row['Created_At']
-                locations=row['Locations']
-                tree.insert("", i, text=i,values=(created_at,tweets,locations))
+                tweets = row['text']
+                created_at=row['created_at']
+                # locations=row['Locations']
+                tree.insert("", i, text=i,values=(created_at,tweets))
 
 
     def analyse(self):
@@ -375,7 +449,7 @@ class SentimentAnalysis():
 
         def cleanTweets():
             def cleanTxt(text):
-                text = re.sub(r'\n', ' ', text)
+                text = re.sub(r'\n', ' ', str(text))
                 text = re.sub(r'\r', ' ', text)
                 text = re.sub('@[A-Za-z0–9]+', '', text)  # Removing @mentions
                 text = re.sub(r'\d+(?:\.\d*(?:[eE]\d+))?', '', text)  # removing numbers
@@ -387,25 +461,230 @@ class SentimentAnalysis():
                 text = re.sub(r'\s+', ' ', text) # removing whitespace
                 return text
 
+            def detectLanguage(text):
+                try:
+                    if (detect(text) == "en"):
+                        return text
+                    else:
+                        return "Other Language"
+                except Exception as ex:
+                    pass
 
-            df = pd.read_csv('new_data.csv')
-            df["Clean Tweets"]=df["Tweets"].apply(cleanTxt)
+            def changeDate(text):
+                return dateutil.parser.parse(text).date()
+
+            def findCountry(text):
+                for country in pycountry.countries:
+                    if country.name in text:
+                        return country.name
+
+
+
+            df=pd.read_csv('new_data.csv')
+            df["Language"]=df["text"].apply(detectLanguage)
+            df.to_csv("languagetweets.csv", index=False)
+            print("Printing langauge tweets")
+            print(df)
+
+            print("Deleting the other language tweets")
+            data = pd.read_csv("languagetweets.csv")
+
+            # Create a DataFrame object
+            empDfObj = pd.DataFrame(data, columns=['Language'])
+            if 'Other Language' not in empDfObj.values:
+                print("other language not found")
+                data.to_csv("final.csv", index=False)
+            else:
+                print("other language  found")
+                data = pd.read_csv("languagetweets.csv")
+                data = data.set_index("Language")
+                data = data.drop("Other Language", axis=0)
+                data.to_csv("final.csv", index=False)
+                print(data)
+
+            # data = data.set_index("Language")
+            # data = data.drop("Other Language", axis=0)
+            # data.to_csv("final.csv", index=False)
+            # print(data)
+
+
+            df = pd.read_csv('final.csv')
+            df["Clean Tweets"]=df["text"].apply(cleanTxt)
             df.to_csv(r'cleandata.csv', index=False)
+            print("Before null value")
+            print(df['Clean Tweets'].isnull().sum())
+
+            print("Removing null value")
+            data = pd.read_csv("cleandata.csv")
+            data['Clean Tweets'].replace('', np.nan, inplace=True)
+            data.dropna(subset=['Clean Tweets'], inplace=True)
+            data.to_csv(r'nonemptydata.csv', index=False)
+            print("After removing null value")
+
+            d1 = pd.read_csv("nonemptydata.csv")
+            d1["created_at"] = d1["created_at"].apply(changeDate)
+            d1.to_csv("nonemptydata.csv", index=False)
+
+            data = pd.read_csv('nonemptydata.csv')
+            if "user" in data:
+                df = []
+                for i in range(0, len(data['user'])):
+                    b = eval(data['user'][i])
+                    df.append(b["location"])
+                data["Location"] = df
+                data.to_csv("nonemptydata.csv", index=False)
+            else:
+                data.to_csv("nonemptydata.csv", index=False)
+
+            df = pd.read_csv('nonemptydata.csv')
+            df["Location"] = data["Location"].astype(str)
+            df["Location"] = df["Location"].apply(findCountry)
+            df.to_csv(r'nonemptydata.csv', index=False)
 
 
 
-
-
-            # df = pd.read_csv('cleandata.csv')
-            # print(df["English_Tweets"])
-            # df["Clean Tweets"] = df["English_Tweets"].apply(cleanTxt)
-            # df.to_csv(r'cleandata.csv', index=False)
-            # print(df)
             cleanTweetsPage()
         Button(f1, text="Clean Tweets", command=cleanTweets).place(x=0,y=0, height=50,width=200,)
+class SentimentAnalysisCSV():
+    def __init__(self):
+        self.root3 = Tk()
+        self.root3.geometry("1020x680+160+10")
+        self.root3.title("Fetching the tweets")
+        self.root3.resizable(0, 0)
+        self.fetchForm()
+        self.analyse()
+        self.root3.mainloop()
+
+    def fetchForm(self):
+        Label(self.root3, text="Twitter Data", font=("m 30")).place(x=370, y=5)
+        tree = ttk.Treeview(self.root3)
+        # number of columns
+        tree["columns"] = ("1", "2", "3")
+        tree.column("#0", width=50, stretch=YES)
+        tree.column("1", width=200, stretch=YES)
+        tree.column("2", width=800, stretch=YES)
+        # tree.column("3", width=150, stretch=YES)
+
+        # heading of the table
+        tree.heading("#0", text="S.N.", )
+        tree.heading("1", text="Created At")
+        tree.heading("2", text="Tweets", )
+        # tree.heading("3", text="Location", )
+
+        tree.place(x=0, y=50, width=1020,height=500)
+        i=0
+
+
+        with open(csv_file_path) as f:
+            reader = csv.DictReader(f, delimiter=',')
+            for row in reader:
+                i=i+1
+                tweets = row['text']
+                created_at=row['created_at']
+                # locations=row['Locations']
+                tree.insert("", i, text=i,values=(created_at,tweets))
+
+
+    def analyse(self):
+        f1=Frame(self.root3, bg="red", height=50, width=200)
+        f1.pack(side=BOTTOM, anchor=E,padx=20,pady=10)
+
+        def cleanTweets():
+            def cleanTxt(text):
+                text = re.sub(r'\n', ' ', str(text))
+                text = re.sub(r'\r', ' ', text)
+                text = re.sub('@[A-Za-z0–9]+', '', text)  # Removing @mentions
+                text = re.sub(r'\d+(?:\.\d*(?:[eE]\d+))?', '', text)  # removing numbers
+                text = re.sub('#', '', text)  # Removing '#' hash tag
+                text = re.sub('RT[\s]+', '', text)  # Removing RT
+                text = re.sub('https?:\/\/\S+', '', text)  # Removing hyperlink
+                text = re.sub(r'R\$', ' ', text)  # removing special characters
+                text = re.sub(r'\W', ' ', text)  # removing special characters
+                text = re.sub(r'\s+', ' ', text) # removing whitespace
+                return text
+
+            def detectLanguage(text):
+                try:
+                    if (detect(text) == "en"):
+                        return text
+                    else:
+                        return "Other Language"
+                except Exception as ex:
+                    pass
+
+            def changeDate(text):
+                return dateutil.parser.parse(text).date()
+
+            def findCountry(text):
+                for country in pycountry.countries:
+                    if country.name in text:
+                        return country.name
 
 
 
+            df=pd.read_csv(csv_file_path)
+            df["Language"]=df["text"].apply(detectLanguage)
+            df.to_csv("languagetweets.csv", index=False)
+            print("Printing langauge tweets")
+            print(df)
+
+
+            print("Deleting the other language tweets")
+            data = pd.read_csv("languagetweets.csv")
+
+            # Create a DataFrame object
+            empDfObj = pd.DataFrame(data, columns=['Language'])
+            if 'Other Language' not in empDfObj.values:
+                print("other language not found")
+                data.to_csv("final.csv", index=False)
+            else:
+                print("other language  found")
+                data = pd.read_csv("languagetweets.csv")
+                data = data.set_index("Language")
+                data = data.drop("Other Language", axis=0)
+                data.to_csv("final.csv", index=False)
+                print(data)
+
+
+            df = pd.read_csv('final.csv')
+            df["Clean Tweets"]=df["text"].apply(cleanTxt)
+            df.to_csv(r'cleandata.csv', index=False)
+            print("Before null value")
+            print(df['Clean Tweets'].isnull().sum())
+
+            print("Removing null value")
+            data = pd.read_csv("cleandata.csv")
+            data['Clean Tweets'].replace('', np.nan, inplace=True)
+            data.dropna(subset=['Clean Tweets'], inplace=True)
+            data.to_csv(r'nonemptydata.csv', index=False)
+            print("After removing null value")
+
+            d1 = pd.read_csv("nonemptydata.csv")
+            d1["created_at"] = d1["created_at"].apply(changeDate)
+            d1.to_csv("nonemptydata.csv", index=False)
+
+
+
+            data = pd.read_csv('nonemptydata.csv')
+            if "user" in data:
+                df = []
+                for i in range(0, len(data['user'])):
+                    b = eval(data['user'][i])
+                    df.append(b["location"])
+                data["Location"] = df
+                data.to_csv("nonemptydata.csv", index=False)
+            else:
+                data.to_csv("nonemptydata.csv", index=False)
+
+            df = pd.read_csv('nonemptydata.csv')
+            df["Location"] = data["Location"].astype(str)
+            df["Location"] = df["Location"].apply(findCountry)
+            df.to_csv(r'nonemptydata.csv', index=False)
+
+
+
+            cleanTweetsPage()
+        Button(f1, text="Clean Tweets", command=cleanTweets).place(x=0,y=0, height=50,width=200,)
 
 class cleanTweetsPage():
     def __init__(self):
@@ -438,23 +717,23 @@ class cleanTweetsPage():
 
         tree.place(x=0, y=50, width=1020,height=500)
         i = 0
-        with open('cleandata.csv') as f:
+        with open('nonemptydata.csv') as f:
             reader = csv.DictReader(f, delimiter=',')
             for row in reader:
                 i = i + 1
-                tweets = row['Tweets']
+                tweets = row['text']
                 clean_tweets=row['Clean Tweets']
-                created_at = row['Created_At']
-                locations = row['Locations']
-                tree.insert("", i, text=i, values=(created_at, tweets,clean_tweets, locations))
+                created_at = row['created_at']
+                locations = row['Location']
+                tree.insert("", i, text=i, values=(created_at, tweets,clean_tweets,locations))
     def calculateSentiment(self):
         f1 = Frame(self.cleanTweetsWindow, bg="red", height=50, width=200)
         f1.pack(side=BOTTOM, anchor=E, padx=20, pady=10)
         def sentiments():
             def getSubjectivity(text):
-                return TextBlob(text).sentiment.subjectivity
+                return round(TextBlob(text).sentiment.subjectivity,2)
             def getPolarity(text):
-                return TextBlob(text).sentiment.polarity
+                return round(TextBlob(text).sentiment.polarity,2)
 
             def getAnalysis(score):
                 if score < 0:
@@ -463,11 +742,9 @@ class cleanTweetsPage():
                     return 'Neutral'
                 else:
                     return 'Positive'
-
-
-            df = pd.read_csv('cleandata.csv')
+            df = pd.read_csv('nonemptydata.csv')
             df['Subjectivity'] = df['Clean Tweets'].apply(getSubjectivity)
-            df['Polarity'] = df['Tweets'].apply(getPolarity)
+            df['Polarity'] = df['Clean Tweets'].apply(getPolarity)
             df['Analysis'] = df['Polarity'].apply(getAnalysis)
             df.to_csv(r'sentimentCalculatedData.csv', index=False)
             showSentimentPage()
@@ -491,10 +768,10 @@ class showSentimentPage():
         # number of columns
         tree["columns"] = ("1", "2", "3", "4")
         tree.column("#0", width=40, stretch=YES)
-        tree.column("1", width=500, stretch=YES)
-        tree.column("2", width=110, stretch=YES)
-        tree.column("3", width=110, stretch=YES)
-        tree.column("4", width=80, stretch=YES)
+        tree.column("1", width=700, stretch=YES)
+        tree.column("2", width=50, stretch=YES)
+        tree.column("3", width=50, stretch=YES)
+        tree.column("4", width=50, stretch=YES)
 
         # heading of the table
         tree.heading("#0", text="S.N.", )
@@ -514,54 +791,164 @@ class showSentimentPage():
                 polarity = row['Polarity']
                 analysis=row['Analysis']
                 tree.insert("", i, text=i, values=(clean_tweets, subjectivity, polarity, analysis))
+
     def getAnalysis(self):
-        f1 = Frame(self.showSentimentWindow,  height=50, width=200)
-        f2 = Frame(self.showSentimentWindow,  height=50, width=200)
-        f3 = Frame(self.showSentimentWindow, height=50, width=200)
-        f4 = Frame(self.showSentimentWindow, height=50, width=200)
-        f1.place(x=800, y=600)
-        f2.place(x=600, y=600)
-        f3.place(x=400, y=600)
-        f4.place(x=200, y=600)
-        def wordcloud():
-            # word cloud visualization
-            df = pd.read_csv('cleandata.csv')
-            allWords = ' '.join([twts for twts in df['Clean Tweets']])
-            wordCloud = WordCloud(width=500, height=300, random_state=21, max_font_size=110).generate(allWords)
-            plt.imshow(wordCloud, interpolation="bilinear")
-            plt.axis('off')
-            plt.show()
+        f1 = Frame(self.showSentimentWindow,  height=50, width=150)
+        f2 = Frame(self.showSentimentWindow,  height=50, width=150)
+        f3 = Frame(self.showSentimentWindow, height=50, width=150)
+        f4 = Frame(self.showSentimentWindow, height=50, width=150)
+        f5 = Frame(self.showSentimentWindow, height=50, width=150)
 
-        def subvspol():
-            df = pd.read_csv('sentimentCalculatedData.csv')
-            plt1.figure(figsize=(8, 6))
-            for i in range(0, df.shape[0]):
-                plt1.scatter(df["Polarity"][i], df["Subjectivity"][i], color='Blue')
-            # plt.scatter(x,y,color)
-            plt1.title('Sentiment Analysis')
-            plt1.xlabel('Polarity')
-            plt1.ylabel('Subjectivity')
-            plt1.show()
+        f1.place(x=820, y=600)
+        f2.place(x=620, y=600)
+        f3.place(x=420, y=600)
+        f4.place(x=220,y=600)
+        f5.place(x=20, y=600)
 
-        def bargraph():
-            df = pd.read_csv('sentimentCalculatedData.csv')
-            plt.figure(figsize=(8, 7))
-            # Show the value counts
-            df['Analysis'].value_counts()
+        def positiveTweets():
+            data = pd.read_csv("sentimentCalculatedData.csv")
+            positiveTweets=data.loc[data['Analysis'] == 'Positive']
+            positiveTweets.to_csv('positiveTweets.csv',index=False)
+
+            Label(self.showSentimentWindow, text="Sentiment of the Text", font=("m 30")).place(x=370, y=5)
+            tree = ttk.Treeview(self.showSentimentWindow)
+
+            # number of columns
+            tree["columns"] = ("1", "2", "3", "4")
+            tree.column("#0", width=40, stretch=YES)
+            tree.column("1", width=700, stretch=YES)
+            tree.column("2", width=50, stretch=YES)
+            tree.column("3", width=50, stretch=YES)
+            tree.column("4", width=50, stretch=YES)
+
+            # heading of the table
+            tree.heading("#0", text="S.N.", )
+            tree.heading("1", text="Clean Tweets")
+            tree.heading("2", text="Subjectivity", )
+            tree.heading("3", text="Polarity", )
+            tree.heading("4", text="Sentiments", )
+
+            tree.place(x=0, y=50, width=1020, height=500)
+            i = 0
+            with open('positiveTweets.csv') as f:
+                reader = csv.DictReader(f, delimiter=',')
+                for row in reader:
+                    i = i + 1
+                    clean_tweets = row['Clean Tweets']
+                    subjectivity = row['Subjectivity']
+                    polarity = row['Polarity']
+                    analysis = row['Analysis']
+                    tree.insert("", i, text=i, values=(clean_tweets, subjectivity, polarity, analysis))
+        def negativeTweets():
+            data = pd.read_csv("sentimentCalculatedData.csv")
+            positiveTweets = data.loc[data['Analysis'] == 'Negative']
+            positiveTweets.to_csv('negativeTweets.csv', index=False)
+
+            Label(self.showSentimentWindow, text="Sentiment of the Text", font=("m 30")).place(x=370, y=5)
+            tree = ttk.Treeview(self.showSentimentWindow)
+
+            # number of columns
+            tree["columns"] = ("1", "2", "3", "4")
+            tree.column("#0", width=40, stretch=YES)
+            tree.column("1", width=700, stretch=YES)
+            tree.column("2", width=50, stretch=YES)
+            tree.column("3", width=50, stretch=YES)
+            tree.column("4", width=50, stretch=YES)
+
+            # heading of the table
+            tree.heading("#0", text="S.N.", )
+            tree.heading("1", text="Clean Tweets")
+            tree.heading("2", text="Subjectivity", )
+            tree.heading("3", text="Polarity", )
+            tree.heading("4", text="Sentiments", )
+
+            tree.place(x=0, y=50, width=1020, height=500)
+            i = 0
+            with open('negativeTweets.csv') as f:
+                reader = csv.DictReader(f, delimiter=',')
+                for row in reader:
+                    i = i + 1
+                    clean_tweets = row['Clean Tweets']
+                    subjectivity = row['Subjectivity']
+                    polarity = row['Polarity']
+                    analysis = row['Analysis']
+                    tree.insert("", i, text=i, values=(clean_tweets, subjectivity, polarity, analysis))
+        def neutralTweets():
+            data = pd.read_csv("sentimentCalculatedData.csv")
+            positiveTweets = data.loc[data['Analysis'] == 'Neutral']
+            positiveTweets.to_csv('positiveTweets.csv', index=False)
+
+            Label(self.showSentimentWindow, text="Sentiment of the Text", font=("m 30")).place(x=370, y=5)
+            tree = ttk.Treeview(self.showSentimentWindow)
+
+            # number of columns
+            tree["columns"] = ("1", "2", "3", "4")
+            tree.column("#0", width=40, stretch=YES)
+            tree.column("1", width=700, stretch=YES)
+            tree.column("2", width=50, stretch=YES)
+            tree.column("3", width=50, stretch=YES)
+            tree.column("4", width=50, stretch=YES)
+
+            # heading of the table
+            tree.heading("#0", text="S.N.", )
+            tree.heading("1", text="Clean Tweets")
+            tree.heading("2", text="Subjectivity", )
+            tree.heading("3", text="Polarity", )
+            tree.heading("4", text="Sentiments", )
+
+            tree.place(x=0, y=50, width=1020, height=500)
+            i = 0
+            with open('positiveTweets.csv') as f:
+                reader = csv.DictReader(f, delimiter=',')
+                for row in reader:
+                    i = i + 1
+                    clean_tweets = row['Clean Tweets']
+                    subjectivity = row['Subjectivity']
+                    polarity = row['Polarity']
+                    analysis = row['Analysis']
+                    tree.insert("", i, text=i, values=(clean_tweets, subjectivity, polarity, analysis))
+        def showAll():
+            Label(self.showSentimentWindow, text="Sentiment of the Text", font=("m 30")).place(x=370, y=5)
+            tree = ttk.Treeview(self.showSentimentWindow)
+
+            # number of columns
+            tree["columns"] = ("1", "2", "3", "4")
+            tree.column("#0", width=40, stretch=YES)
+            tree.column("1", width=700, stretch=YES)
+            tree.column("2", width=50, stretch=YES)
+            tree.column("3", width=50, stretch=YES)
+            tree.column("4", width=50, stretch=YES)
+
+            # heading of the table
+            tree.heading("#0", text="S.N.", )
+            tree.heading("1", text="Clean Tweets")
+            tree.heading("2", text="Subjectivity", )
+            tree.heading("3", text="Polarity", )
+            tree.heading("4", text="Sentiments", )
+
+            tree.place(x=0, y=50, width=1020, height=500)
+            i = 0
+            with open('sentimentCalculatedData.csv') as f:
+                reader = csv.DictReader(f, delimiter=',')
+                for row in reader:
+                    i = i + 1
+                    clean_tweets = row['Clean Tweets']
+                    subjectivity = row['Subjectivity']
+                    polarity = row['Polarity']
+                    analysis = row['Analysis']
+                    tree.insert("", i, text=i, values=(clean_tweets, subjectivity, polarity, analysis))
 
 
-            # Plotting and visualizing the counts
-            plt.title('Sentiment Analysis')
-            plt.xlabel('Sentiment')
-            plt.ylabel('Counts')
-            df['Analysis'].value_counts().plot(kind='bar')
-            plt.show()
 
 
-        Button(f1, text="Show Wordcloud", command=wordcloud).place(x=0, y=0, height=50, width=180, )
-        Button(f2, text="Subjectivity Vs Polarity", command=subvspol).place(x=0, y=0, height=50, width=180, )
-        Button(f3, text="Bar Graph", command=bargraph).place(x=0, y=0, height=50, width=180, )
-        Button(f4, text="Train Data", command=trainData).place(x=0, y=0, height=50, width=180, )
+
+
+
+        Button(f5, text="Neutral Tweets", command=neutralTweets,activeforeground="#2ecc71").place(x=0, y=0, height=50, width=150, )
+        Button(f4, text="Negative Tweets", command=negativeTweets,activeforeground="#2ecc71").place(x=0, y=0, height=50, width=150, )
+        Button(f3, text="Positive Tweets",command=positiveTweets,activeforeground="#2ecc71").place(x=0, y=0, height=50, width=150, )
+        Button(f1, text="All Data", command=showAll,activeforeground="#2ecc71",).place(x=0, y=0, height=50, width=150, )
+        Button(f2, text="Details", command=Details,activeforeground="#2ecc71").place(x=0, y=0, height=50, width=150, )
 
 class trainData():
     def __init__(self):
@@ -755,9 +1142,134 @@ class trainData():
         Button(self.trainData, text="Learning Curve", command=leaningCurve, padx=40, pady=20).place(x=250, y=360)
 
 
+class Details():
+    def __init__(self):
+        self.showDetails=Tk()
+        # self.showDetails.geometry("1020x680+160+10")
+        self.showDetails.title("Details of the tweets")
+        # self.showDetails.resizable(0, 0)
+        self.tweetDetails()
+
+        self.showDetails.mainloop()
+
+    def tweetDetails(self):
+        data = pd.read_csv('sentimentCalculatedData.csv')
+        data1 = pd.read_csv('nonemptydata.csv')
+        # Create a DataFrame object
+        dfObj = pd.DataFrame(data1, columns=['Location'])
+        totalTweets=len(data1)
+        tweetsWithoutLocation=dfObj.isnull().sum().sum()
+        tweetsWithLocation=totalTweets-tweetsWithoutLocation
+
+        ptweets = data[data.Analysis == 'Neutral']
+        ptweets = ptweets['Clean Tweets']
+        positiveTweets=ptweets.shape[0]
+
+        ptweets = data[data.Analysis == 'Negative']
+        ptweets = ptweets['Clean Tweets']
+        negativeTweets = ptweets.shape[0]
+
+        neutralTweets=len(data)-positiveTweets-negativeTweets
+
+        def locationGraph():
+            objects = ('With Location', 'Without Location')
+            y_pos = np.arange(len(objects))
+            performance = [tweetsWithLocation,tweetsWithoutLocation]
+
+            plt.bar(y_pos, performance, align='center', alpha=0.5)
+            plt.xticks(y_pos, objects)
+            plt.ylabel('Number of Tweets')
+            plt.title('Total number of tweets with location and without location')
+            plt.show()
+
+
+
+
+        print("Total number of tweets",totalTweets)
+        print("Total number of tweets without location",tweetsWithoutLocation)
+        print("Total number of tweets with location",tweetsWithLocation)
+
+        print("Total number of positive Tweets",positiveTweets)
+        print("Total number of negative Tweets",negativeTweets )
+        print("Total number of neutral Tweets", neutralTweets)
+
+
+        Label(self.showDetails, text="Total number of tweets:   "+str(totalTweets), font=("w 30 bold")).pack(anchor=W)
+        Label(self.showDetails, text="Total number of tweets without location:   " + str(tweetsWithoutLocation), font=("w 30 bold")).pack(anchor=W)
+        Label(self.showDetails, text="Total number of tweets with location:   " + str(tweetsWithLocation),
+              font=("w 30 bold")).pack(anchor=W)
+        Label(self.showDetails, text="Total number of positive tweets:   " + str(positiveTweets), font=("w 30 bold")).pack(anchor=W)
+        Label(self.showDetails, text="Total number of negative tweets:   " + str(negativeTweets), font=("w 30 bold")).pack(anchor=W)
+        Label(self.showDetails, text="Total number of neutral tweets:   " + str(neutralTweets), font=("w 30 bold")).pack(anchor=W)
+
+
+        # Frame(self.showDetails,height=0).pack()
+        def bargraph():
+            df = pd.read_csv('sentimentCalculatedData.csv')
+            plt.figure(figsize=(8, 7))
+            # Show the value counts
+            df['Analysis'].value_counts()
+
+
+            # Plotting and visualizing the counts
+            plt.title('Sentiment Analysis')
+            plt.xlabel('Sentiment')
+            plt.ylabel('Counts')
+            df['Analysis'].value_counts().plot(kind='bar')
+            plt.show()
+        def wordcloud():
+            # word cloud visualization
+            df = pd.read_csv('nonemptydata.csv')
+            allWords = ' '.join([twts for twts in df['Clean Tweets']])
+            wordCloud = WordCloud(width=500, height=300, random_state=21, max_font_size=110).generate(allWords)
+            plt.imshow(wordCloud, interpolation="bilinear")
+            plt.axis('off')
+            plt.show()
+
+        def subvspol():
+            df = pd.read_csv('sentimentCalculatedData.csv')
+            plt1.figure(figsize=(8, 6))
+            for i in range(0, df.shape[0]):
+                plt1.scatter(df["Polarity"][i], df["Subjectivity"][i], color='Blue')
+            plt1.title('Sentiment Analysis')
+            plt1.xlabel('Polarity')
+            plt1.ylabel('Subjectivity')
+            plt1.show()
+
+
+        def locationanalysis():
+            data = pd.read_csv('sentimentCalculatedData.csv')
+            # plt.figure(figsize=(8, 7))
+            # plt.title("Sentiment of tweets on different date")
+            data.groupby(['Location', 'Analysis']).Analysis.count().unstack().plot(kind='bar')
+            plt2.show()
+
+        def dateanalysis():
+            data = pd.read_csv('sentimentCalculatedData.csv')
+            # plt.figure(figsize=(8, 7))
+            # plt.title("Sentiment of tweets on different date")
+            data.groupby(['created_at', 'Analysis']).Analysis.count().unstack().plot(kind='bar')
+            plt2.show()
+
+        Button(self.showDetails, command=locationGraph, text="Location Tweets", font=("w 20 bold")).pack(ipadx=20, ipady=10,
+                                                                                                padx=20,side=LEFT)
+        Button(self.showDetails, command=bargraph, text="Bar Graph",font=("w 20 bold")).pack(ipadx=20, ipady=10,padx=20,side=LEFT,)
+        Button(self.showDetails, command=wordcloud, text="Word Cloud", font=("w 20 bold")).pack(ipadx=20, ipady=10,padx=20,side=LEFT)
+        Button(self.showDetails, command=subvspol, text="Sub. Vs Pol.", font=("w 20 bold")).pack(ipadx=20, ipady=10,padx=20,side=LEFT)
+        Button(self.showDetails, command=locationanalysis, text=" Analysis", font=("w 20 bold")).pack(ipadx=20, ipady=10,padx=20,side=LEFT)
+        Button(self.showDetails, command=dateanalysis, text="Date Analysis", font=("w 20 bold")).pack(ipadx=20,
+                                                                                                      ipady=10, padx=20,
+                                                                                                     side=)
+        Button(self.showDetails, command=trainData, text="Train Data", font=("w 20 bold")).pack(ipadx=20, ipady=10,
+                                                                                             padx=20,side=TOP)
 
 
 
 
 
-s=FirstPage()
+
+
+
+
+
+s=Details()
